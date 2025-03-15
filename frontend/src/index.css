@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #1e293b; /* Dark theme */
+  
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex; /* Sidebar and content side by side */
+  overflow: hidden; /* Prevents scrolling issues */
+}
+
+.sidebar {
+  width: 250px; /* Fixed width */
+  background-color: #f4f6f9; /* Light sidebar */
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  background-color: #0f172a; /* Dark blue for contrast */
+  overflow: hidden;
+}
+
+.content-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+.input-section {
+  width: 100%;
+  background-color: #1e293b;
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.charts-section {
+  flex-grow: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 10px;
+  padding-top: 15px;
+}
+
+.chart-card {
+  flex: 1; /* Ensures both charts take equal space */
+  background-color: #1a1a1a; /* Slightly darker for contrast */
+  padding: 20px;
+  border-radius: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
