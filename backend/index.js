@@ -65,6 +65,8 @@ app.use(express.json());
 
 const genAI = new GoogleGenerativeAI(process.env.API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+let lastAnalysisResult = null;
+let FlastAnalysisResult = null;
 
 async function getProductDetails(url) {
    
@@ -384,7 +386,7 @@ app.post("/analyze", async (req, res) => {
         const reviewsText = reviews.map(review => review.text);
         const aiFeedback = await getAIProductFeedback(reviewsText, productDetails.averageScore);
 
-        res.json({
+        lastAnalysisResult = {
             productDetails,
             sentimentData: {
                 positive: positiveReviews,
@@ -397,9 +399,17 @@ app.post("/analyze", async (req, res) => {
             },
             totalReviews: reviewCount,
             aiFeedback
-        });
+        };
+        res.json(lastAnalysisResult);
 
     
+});
+app.get("/analyze", (req, res) => {
+    if (lastAnalysisResult) {
+        res.json(lastAnalysisResult);
+    } else {
+        res.status(404).json({ error: "No analysis result available" });
+    }
 });
 
 app.post("/analyzeFlipkart", async (req, res) => {
@@ -435,7 +445,7 @@ app.post("/analyzeFlipkart", async (req, res) => {
         const fnegativeScore = Math.abs(reviews.reduce((acc, review) => 
             sentimentAnalyzer.analyze(review).score < 0 ? acc + sentimentAnalyzer.analyze(review).score : acc, 0));
 
-        res.json({
+        FlastAnalysisResult = {
             fproductDetails,
             fsentimentData: {
                 positive: fpositiveReviews,
@@ -448,10 +458,21 @@ app.post("/analyzeFlipkart", async (req, res) => {
             },
             freviewCount,
             aiFeedback
-        });
+        }
+        res.json(FlastAnalysisResult);
+        
+        
     } catch (error) {
         console.error('Error:', error);
         res.status(500).json({ error: "Failed to analyze the Flipkart URL", details: error.message });
+    }
+});
+
+app.get("/analyzeFlipkart", (req, res) => {
+    if (FlastAnalysisResult) {
+        res.json(FlastAnalysisResult);
+    } else {
+        res.status(404).json({ error: "No analysis result available" });
     }
 });
 
