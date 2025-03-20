@@ -8,6 +8,7 @@ const https = require('https');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const puppeteer = require('puppeteer');
 const { getFlipkartReviews } = require('./flipkartScraper');
+const { getMyntraReviews } = require('./myntraScrapper');
 require('dotenv').config();
 
 // Create a custom axios instance with configuration
@@ -312,6 +313,100 @@ async function FgetProductDetails(url) {
     }
 }
 
+async function MgetProductDetails(url) {
+    let browser;
+    try {
+        browser = await puppeteer.launch({ headless: true });
+        const page = await browser.newPage();
+        
+        // Set user agent
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36');
+        
+        await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+
+        // Extract product details
+        const mproductName = await page.$eval('div.pdp-price-info', el => {
+            const title = el.querySelector('h1.pdp-title')?.textContent.trim();
+            const name = el.querySelector('h1.pdp-name')?.textContent.trim();
+            return `${title} ${name}`;
+        });
+        const mproductImage = await page.$eval(
+            '.image-grid-image',
+            (el) => {
+                const style = el.style.backgroundImage;
+                const urlMatch = style.match(/url\("(.*?)"\)/);
+                return urlMatch ? urlMatch[1] : null;
+            }
+        );
+
+        // Update selectors for rating distribution
+        const mratingDistribution = {
+            '5 Stars': parseInt(
+              await page.$eval(
+                '.index-flexRow.index-ratingBarContainer:nth-child(1) .index-count',
+                (el) => el.textContent.replace(/,/g, '')
+              ),
+              10
+            ),
+            '4 Stars': parseInt(
+              await page.$eval(
+                '.index-flexRow.index-ratingBarContainer:nth-child(2) .index-count',
+                (el) => el.textContent.replace(/,/g, '')
+              ),
+              10
+            ),
+            '3 Stars': parseInt(
+              await page.$eval(
+                '.index-flexRow.index-ratingBarContainer:nth-child(3) .index-count',
+                (el) => el.textContent.replace(/,/g, '')
+              ),
+              10
+            ),
+            '2 Stars': parseInt(
+              await page.$eval(
+                '.index-flexRow.index-ratingBarContainer:nth-child(4) .index-count',
+                (el) => el.textContent.replace(/,/g, '')
+              ),
+              10
+            ),
+            '1 Star': parseInt(
+              await page.$eval(
+                '.index-flexRow.index-ratingBarContainer:nth-child(5) .index-count',
+                (el) => el.textContent.replace(/,/g, '')
+              ),
+              10
+            ),
+          };
+
+        const mtotalRatings = Object.values(mratingDistribution).reduce((acc, val) => acc + (isNaN(val) ? 0 : val), 0);
+        
+        const maverageScore = await page.$eval('div.index-overallRating > div:first-of-type', el => el.textContent.trim()) || "0.0";
+
+        console.log('Scraped Data:', {
+            mproductName,
+            mproductImage,
+            mratingDistribution,
+            mtotalRatings,
+            maverageScore
+        });
+
+        return {
+            mproductName,
+            mproductImage,
+            mratingDistribution,
+            mtotalRatings,
+            maverageScore
+        };
+    } catch (error) {
+        console.error('Error fetching product details with Puppeteer:', error.message);
+        throw new Error('Failed to fetch product details');
+    } finally {
+        if (browser) {
+            await browser.close();
+        }
+    }
+}
+
 app.post("/analyze", async (req, res) => {
   
         const { url, platform } = req.body;
@@ -486,6 +581,62 @@ app.get("/analyzeFlipkart", (req, res) => {
         res.json(FlastAnalysisResult);
     } else {
         res.status(404).json({ error: "No analysis result available" });
+    }
+});
+
+app.post("/analyzeMyntra", async (req, res) => {
+    try {
+        const { url } = req.body;
+        if (!url) {
+            return res.status(400).json({ error: "URL is required" });
+        }
+
+        // Fetch product details first
+        const mproductDetails = await MgetProductDetails(url);
+
+        // Then fetch reviews
+        const reviews = await getMyntraReviews(url);
+
+        // Use mproductDetails for AI feedback
+        const aiFeedback = await getAIProductFeedback(reviews, mproductDetails.maverageScore);
+
+        const mreviewCount = reviews.length;
+        let mpositiveReviews = 0;
+        let mnegativeReviews = 0;
+        let mneutralReviews = 0;
+
+        reviews.forEach(review => {
+            const sentiment = sentimentAnalyzer.analyze(review);
+            if (sentiment.score > 0) mpositiveReviews++;
+            else if (sentiment.score < 0) mnegativeReviews++;
+            else mneutralReviews++;
+        });
+
+        const mpositiveScore = reviews.reduce((acc, review) => 
+            sentimentAnalyzer.analyze(review).score > 0 ? acc + sentimentAnalyzer.analyze(review).score : acc, 0);
+        const mnegativeScore = Math.abs(reviews.reduce((acc, review) => 
+            sentimentAnalyzer.analyze(review).score < 0 ? acc + sentimentAnalyzer.analyze(review).score : acc, 0));
+
+        const MlastAnalysisResult = {
+            mproductDetails,
+            msentimentData: {
+                positive: mpositiveReviews,
+                neutral: mneutralReviews,
+                negative: mnegativeReviews
+            },
+            msentimentScores: {
+                positive: mpositiveScore,
+                negative: mnegativeScore
+            },
+            mreviewCount,
+            aiFeedback
+        }
+        res.json(MlastAnalysisResult);
+        
+        
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ error: "Failed to analyze the Myntra URL", details: error.message });
     }
 });
 
