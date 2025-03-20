@@ -262,12 +262,25 @@ async function FgetProductDetails(url) {
         const fproductImage = await page.$eval('img.DByuf4.IZexXJ.jLEJ7H', el => el.src);
 
         // Update selectors for rating distribution
+        let className = await page.evaluate(() => {
+            if (document.querySelector('ul.\\+psZUR')) {
+                    return '\\+psZUR';
+            } else if (document.querySelector('ul.lpANVI')) {
+                return 'lpANVI';
+            }
+            return null;
+        });
+
+        if (!className) {
+            throw new Error('Neither +psZUR nor lpANVI class found');
+        }
+
         const fratingDistribution = {
-            '5 Stars': parseInt(await page.$eval('ul.\\+psZUR li:nth-child(1) .BArk-j', el => el.textContent.replace(/,/g, '')), 10),
-            '4 Stars': parseInt(await page.$eval('ul.\\+psZUR li:nth-child(2) .BArk-j', el => el.textContent.replace(/,/g, '')), 10),
-            '3 Stars': parseInt(await page.$eval('ul.\\+psZUR li:nth-child(3) .BArk-j', el => el.textContent.replace(/,/g, '')), 10),
-            '2 Stars': parseInt(await page.$eval('ul.\\+psZUR li:nth-child(4) .BArk-j', el => el.textContent.replace(/,/g, '')), 10),
-            '1 Star': parseInt(await page.$eval('ul.\\+psZUR li:nth-child(5) .BArk-j', el => el.textContent.replace(/,/g, '')), 10)
+            '5 Stars': parseInt(await page.$eval(`ul.${className} li:nth-child(1) .BArk-j`, el => el.textContent.replace(/,/g, '')), 10),
+            '4 Stars': parseInt(await page.$eval(`ul.${className} li:nth-child(2) .BArk-j`, el => el.textContent.replace(/,/g, '')), 10),
+            '3 Stars': parseInt(await page.$eval(`ul.${className} li:nth-child(3) .BArk-j`, el => el.textContent.replace(/,/g, '')), 10),
+            '2 Stars': parseInt(await page.$eval(`ul.${className} li:nth-child(4) .BArk-j`, el => el.textContent.replace(/,/g, '')), 10),
+            '1 Star': parseInt(await page.$eval(`ul.${className} li:nth-child(5) .BArk-j`, el => el.textContent.replace(/,/g, '')), 10)
         };
 
         const ftotalRatings = Object.values(fratingDistribution).reduce((acc, val) => acc + val, 0);
