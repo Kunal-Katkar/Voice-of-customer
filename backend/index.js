@@ -64,7 +64,7 @@ app.use(cors({
 
 app.use(express.json());
 
-const genAI = new GoogleGenerativeAI(process.env.API_KEY);
+const genAI = new GoogleGenerativeAI(process.env.API_KEY); 
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 let lastAnalysisResult = null;
 let FlastAnalysisResult = null;
@@ -250,7 +250,11 @@ async function getAIProductFeedback(reviews, averageScore) {
 async function FgetProductDetails(url) {
     let browser;
     try {
-        browser = await puppeteer.launch({ headless: true });
+        browser = await puppeteer.launch({ 
+            headless: true,
+            executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+        });
         const page = await browser.newPage();
         
         // Set user agent
@@ -316,7 +320,11 @@ async function FgetProductDetails(url) {
 async function MgetProductDetails(url) {
     let browser;
     try {
-        browser = await puppeteer.launch({ headless: true });
+        browser = await puppeteer.launch({ 
+            headless: true,
+            executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+        });
         const page = await browser.newPage();
         
         // Set user agent
